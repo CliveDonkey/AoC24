@@ -47,7 +47,43 @@ pub fn main() !void {
             if (postIndex == null or preIndex == null) continue;
             if (postIndex.? < preIndex.?) valid = false;
         }
-        if (valid) sum += update[(update.len - 1) / 2];
+        if (!valid) {
+            //o(n²) sorting, which one does not have to be after anyone else? This one is first
+            var set = std.ArrayList(u8).init(allocator);
+            var sorted = std.ArrayList(u8).init(allocator);
+            try set.appendSlice(update);
+
+            while (set.items.len > 0) {
+                for (set.items) |a| {
+                    var found = false;
+                    for (set.items) |b| {
+                        if (a == b) continue;
+                        const index = indexOf(rules.items, orderRule{
+                            .pre = b,
+                            .post = a,
+                        });
+                        if (index != null) {
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found) {
+                        try sorted.append(a);
+                        const index = std.mem.indexOf(u8, set.items, &[_]u8{a});
+                        _ = set.orderedRemove(index.?);
+                        break;
+                    }
+                }
+            }
+            sum += sorted.items[(sorted.items.len - 1) / 2];
+        }
     }
     std.debug.print("Sum is: {d}\n", .{sum});
+}
+
+fn indexOf(haystack: []orderRule, needle: orderRule) ?usize {
+    for (haystack, 0..haystack.len) |element, i| {
+        if (element.pre == needle.pre and element.post == needle.post) return i;
+    }
+    return null;
 }
